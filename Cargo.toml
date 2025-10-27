@@ -1,6 +1,6 @@
 [package]
 name = "matrw"
-version = "0.1.0"
+version = "0.1.1"
 categories = ["parser-implementations"]
 description = "MAT-file serializing and deserializing"
 repository = "https://github.com/cpfist/matrw"

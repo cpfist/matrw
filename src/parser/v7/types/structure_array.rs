@@ -26,8 +26,7 @@ pub struct StructureArray7 {
     name: ArrayName,
     #[brw(align_after = 8)]
     fieldnames: ArrayFieldNames,
-    #[br(count = fieldnames.field_number*
-        dimensions.dim().iter().product::<u32>(), align_after = 8)]
+    #[br(count = fieldnames.field_number*dimensions.dim().iter().product::<u32>(), align_after = 8)]
     value: Vec<MatVariable7>,
 }
 
