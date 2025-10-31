@@ -752,7 +752,7 @@ where
     }
 }
 
-/// Create a `MatVariable` from `Vec<(T, T)>`.
+/// Create a `MatVariable` from `T`.
 ///
 /// # Example
 ///
@@ -772,7 +772,7 @@ where
     }
 }
 
-/// Create a `MatVariable` from `Vec<(T, T)>`.
+/// Create a `MatVariable` from `(T, T)`.
 ///
 /// # Example
 ///
