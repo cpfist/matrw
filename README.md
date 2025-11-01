@@ -1,4 +1,4 @@
-[![Tests](https://github.com/cpfist/matrw/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/cpfist/matrw/actions/workflows/rust.yml)
+# matrw &emsp; [![Tests](https://github.com/cpfist/matrw/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/cpfist/matrw/actions/workflows/rust.yml) [![Crates.io](https://img.shields.io/crates/v/matrw.svg)](https://crates.io/crates/matrw) [![Docs.rs](https://docs.rs/matrw/badge.svg)](https://docs.rs/matrw) [![License](https://img.shields.io/crates/l/matrw.svg)](https://crates.io/crates/matrw)
 
 matrw is a pure Rust library for serializing and deserializing MATLAB MAT-files.
 
