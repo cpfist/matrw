@@ -145,22 +145,58 @@ impl MatlabType {
         (ir, jc, MatlabType::from(v))
     }
 
-    pub fn print(&self, f: &mut std::fmt::Formatter<'_>, index: usize) -> std::fmt::Result {
-        match self {
-            U8(items) => write!(f, "{:12.4}", items[index]),
-            I8(items) => write!(f, "{:12.4}", items[index]),
-            U16(items) => write!(f, "{:12.4}", items[index]),
-            I16(items) => write!(f, "{:12.4}", items[index]),
-            U32(items) => write!(f, "{:12.4}", items[index]),
-            I32(items) => write!(f, "{:12.4}", items[index]),
-            U64(items) => write!(f, "{:12.4}", items[index]),
-            I64(items) => write!(f, "{:12.4}", items[index]),
-            F32(items) => write!(f, "{:12.4}", items[index]),
-            F64(items) => write!(f, "{:12.4}", items[index]),
-            UTF8(items) => write!(f, "{:12.4}", items[index]),
-            UTF16(items) => write!(f, "{:12.4}", items[index]),
-            BOOL(items) => write!(f, "{:12.4}", items[index]),
+    pub fn print(&self, f: &mut std::fmt::Formatter<'_>, index: usize, cmp: bool, max_width: usize) -> std::fmt::Result {
+        if cmp {
+            match self {
+                U8(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                I8(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                U16(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                I16(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                U32(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                I32(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                U64(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                I64(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
+                F32(items) => write!(f, "{:<width$}", format!(" + {:.4e}i", items[index]), width = max_width + 2),
+                F64(items) => write!(f, "{:<width$}", format!(" + {:.4e}i", items[index]), width = max_width + 2),
+                _ => unimplemented!("No complex printing for type {:?}", self),
+            }
+        } else {
+            match self {
+                U8(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                I8(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                U16(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                I16(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                U32(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                I32(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                U64(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                I64(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                F32(items) => write!(f, "{:>width$}", format!("{:.4e}", items[index]), width = max_width),
+                F64(items) => write!(f, "{:>width$}", format!("{:.4e}", items[index]), width = max_width),
+                UTF8(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                UTF16(items) => write!(f, "{:>width$}", items[index], width = max_width),
+                BOOL(items) => write!(f, "{:>width$}", items[index], width = max_width),
+            }
         }
+    }
+
+    pub fn max_width(&self) -> usize {
+        let formatted: Vec<String> = match &self {
+            U8(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            I8(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            U16(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            I16(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            U32(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            I32(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            U64(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            I64(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            F32(items) => items.iter().map(|&x| format!("{:.4e}", x)).collect(),
+            F64(items) => items.iter().map(|&x| format!("{:.4e}", x)).collect(),
+            UTF8(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            UTF16(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+            BOOL(items) => items.iter().map(|&x| format!("{}", x)).collect(),
+        };
+
+        formatted.iter().map(|s| s.len()).max().unwrap_or(0) + 2
     }
 
     pub fn extend(&mut self, other: MatlabType) {

@@ -388,7 +388,7 @@ impl Display for NumericArray {
         let idx_ref: Vec<usize> = Vec::from(&self.dim[2..]);
         let mut idx: Vec<usize> = vec![0; idx_ref.len()];
 
-        let mut index = 0;
+        let mut global_index = 0;
         let len = self.dim.iter().product::<usize>();
 
         writeln!(f)?;
@@ -401,6 +401,9 @@ impl Display for NumericArray {
             }
         }
         writeln!(f, ")")?;
+
+        // Calculate format
+        let max_width = self.value.max_width();
 
         loop {
             writeln!(f)?;
@@ -418,16 +421,15 @@ impl Display for NumericArray {
                 writeln!(f)?;
             }
 
-            for _i in 0..self.dim[0] {
-                for _j in 0..self.dim[1] {
-                    self.value.print(f, index)?;
-                    if self.is_complex() {
-                        self.value_cmp.as_ref().unwrap().print(f, index)?;
-                    }
-                    index += 1;
+            for r in 0..self.dim[0] {
+                for c in 0..self.dim[1] {
+                    let idx = global_index + c*self.dim[0] + r;
+                    self.value.print(f, idx, false, max_width)?;
+                    self.value_cmp.as_ref().map(|v| v.print(f, idx, true, max_width));
                 }
                 writeln!(f)?;
             }
+            global_index += self.dim[0] * self.dim[1];
 
             for i in 0..idx_ref.len() {
                 if idx[i] < idx_ref[i] - 1 {
@@ -439,7 +441,7 @@ impl Display for NumericArray {
                 }
             }
 
-            if index == len {
+            if global_index == len {
                 break;
             }
         }
