@@ -209,7 +209,7 @@ impl NumericArray {
             let is_row_vec = first_dim[0] == 1;
             let is_col_vec = first_dim[1] == 1;
 
-            let (new_dim, new_value) = if is_row_vec {
+            let (new_dim, new_value, new_value_cmp) = if is_row_vec {
                 nested_row_vecs_to_colmaj_array(value)?
             } else if is_col_vec {
                 nested_col_vecs_to_colmaj_array(value)?
@@ -217,7 +217,7 @@ impl NumericArray {
                 flatten_higher_dim_nested_array(value)?
             };
 
-            Self::new(new_dim, new_value, None)
+            Self::new(new_dim, new_value, new_value_cmp)
         }
     }
 
@@ -452,10 +452,17 @@ impl Display for NumericArray {
 /// Convert a row vectors into a column-major representation
 ///
 ///
-fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType), MatrwError> {
-    // Assert that all nested arrays have the same dimension
+fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+    // Assert that all nested arrays have the same dimension and complex property
+    let dim = rows.first().unwrap().dim();
+    let is_complex = rows.first().unwrap().is_complex().unwrap();
     for row in &rows {
-        if row.dim() != rows.first().unwrap().dim() {
+        if row.dim() != dim {
+            return Err(MatrwError::TypeConstruction(
+                "All row vectors must have the same dimensions.".to_string(),
+            ));
+        }
+        if row.is_complex().unwrap() != is_complex {
             return Err(MatrwError::TypeConstruction(
                 "All row vectors must have the same dimensions.".to_string(),
             ));
@@ -465,29 +472,53 @@ fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>
     let n_cols = rows[0].dim().iter().product();
     let n_rows = rows.len();
 
-    let rows = rows
-        .into_iter()
+    let rows_vec = rows
+        .iter()
         .map(|x| match x {
             MatVariable::NumericArray(v) => v.value.clone(),
             _ => panic!(),
         })
         .collect::<Vec<MatlabType>>();
 
-    let value = MatlabType::join(rows).unwrap();
+    let value = MatlabType::join(rows_vec).unwrap();
     let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
+
+    let value_cmp = if is_complex {
+        let rows_vec = rows
+            .iter()
+            .map(|x| match x {
+                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
+                _ => panic!(),
+            })
+            .collect::<Vec<MatlabType>>();
+
+        let value = MatlabType::join(rows_vec).unwrap();
+        let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
+
+        Some(value)
+    } else {
+        None
+    };
 
     let dim = vec![n_rows, n_cols];
 
-    Ok((dim, value))
+    Ok((dim, value, value_cmp))
 }
 
 /// Convert a col vectors into a column-major representation
 ///
 ///
-fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType), MatrwError> {
-    // Assert that all nested arrays have the same dimension
+fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+    // Assert that all nested arrays have the same dimension and complex property
+    let dim = cols.first().unwrap().dim();
+    let is_complex = cols.first().unwrap().is_complex().unwrap();
     for col in &cols {
-        if col.dim() != cols.first().unwrap().dim() {
+        if col.dim() != dim {
+            return Err(MatrwError::TypeConstruction(
+                "All row vectors must have the same dimensions.".to_string(),
+            ));
+        }
+        if col.is_complex().unwrap() != is_complex {
             return Err(MatrwError::TypeConstruction(
                 "All row vectors must have the same dimensions.".to_string(),
             ));
@@ -497,40 +528,86 @@ fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>
     let n_rows = cols[0].dim().iter().product();
     let n_cols = cols.len();
 
-    let cols = cols
-        .into_iter()
+    let cols_vec = cols
+        .iter()
         .map(|x| match x {
             MatVariable::NumericArray(v) => v.value.clone(),
             _ => panic!(),
         })
         .collect::<Vec<MatlabType>>();
-    let value = MatlabType::join(cols).unwrap();
+    let value = MatlabType::join(cols_vec).unwrap();
+
+    let value_cmp = if is_complex {
+        let cols_vec = cols
+            .iter()
+            .map(|x| match x {
+                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
+                _ => panic!(),
+            })
+            .collect::<Vec<MatlabType>>();
+
+        let value = MatlabType::join(cols_vec).unwrap();
+        let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
+
+        Some(value)
+    } else {
+        None
+    };
+
 
     let dim = vec![n_rows, n_cols];
 
-    Ok((dim, value))
+    Ok((dim, value, value_cmp))
 }
 
 /// Flatten a nested array into a column-major representation
 ///
 ///
-fn flatten_higher_dim_nested_array(value: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType), MatrwError> {
+fn flatten_higher_dim_nested_array(value: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+    // Assert that all nested arrays have the same dimension and complex property
+    let dim = value.first().unwrap().dim();
+    let is_complex = value.first().unwrap().is_complex().unwrap();
+    for row in &value {
+        if row.dim() != dim {
+            return Err(MatrwError::TypeConstruction(
+                "All row vectors must have the same dimensions.".to_string(),
+            ));
+        }
+        if row.is_complex().unwrap() != is_complex {
+            return Err(MatrwError::TypeConstruction(
+                "All row vectors must have the same dimensions.".to_string(),
+            ));
+        }
+    }
+
     let new_dim = vec![value[0].dim(), vec![value.len()]]
         .into_iter()
         .flatten()
         .collect();
 
     let new_value = value
-        .into_iter()
+        .iter()
         .map(|x| match x {
             MatVariable::NumericArray(v) => v.value.clone(),
             _ => panic!(),
         })
         .collect::<Vec<MatlabType>>();
-
     let new_value = MatlabType::join(new_value).unwrap();
 
-    Ok((new_dim, new_value))
+    let new_value_cmp = if is_complex {
+        let new_value_cmp = value
+            .iter()
+            .map(|x| match x {
+                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
+                _ => panic!(),
+            })
+            .collect::<Vec<MatlabType>>();
+        Some(MatlabType::join(new_value_cmp).unwrap())
+    } else {
+        None
+    };
+
+    Ok((new_dim, new_value, new_value_cmp))
 }
 
 /// Check of every `NumericArray` has the same dimension
