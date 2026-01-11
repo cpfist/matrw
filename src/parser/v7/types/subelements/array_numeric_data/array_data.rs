@@ -126,6 +126,8 @@ impl ArrayDataNew<f64> for ArrayData {
         let mut can_be_u32 = true;
         let mut can_be_i32 = true;
 
+        // Test for each f64 array element, if it can be represented by a 
+        // smaller integer type.
         for e in &value {
             if e.fract() != 0.0 {
                 // Check if any element has fractional part
@@ -140,27 +142,27 @@ impl ArrayDataNew<f64> for ArrayData {
             }
 
             // Check u8 bounds
-            if can_be_u8 && *e < u8::MIN as f64 && *e > u8::MAX as f64 {
+            if can_be_u8 && (*e < u8::MIN as f64 || *e > u8::MAX as f64) {
                 can_be_u8 = false;
             }
             // Check i8 bounds
-            if can_be_i8 && *e < i8::MIN as f64 && *e > i8::MAX as f64 {
+            if can_be_i8 && (*e < i8::MIN as f64 || *e > i8::MAX as f64) {
                 can_be_i8 = false;
             }
             // Check u16 bounds
-            if can_be_u16 && *e < u16::MIN as f64 && *e > u16::MAX as f64 {
+            if can_be_u16 && (*e < u16::MIN as f64 || *e > u16::MAX as f64) {
                 can_be_u16 = false;
             }
             // Check i16 bounds
-            if can_be_i16 && *e < i16::MIN as f64 && *e > i16::MAX as f64 {
+            if can_be_i16 && (*e < i16::MIN as f64 || *e > i16::MAX as f64) {
                 can_be_i16 = false;
             }
             // Check u32 bounds
-            if can_be_u32 && *e < u32::MIN as f64 && *e > u32::MAX as f64 {
+            if can_be_u32 && (*e < u32::MIN as f64 || *e > u32::MAX as f64) {
                 can_be_u32 = false;
             }
             // Check i32 bounds
-            if can_be_i32 && *e < i32::MIN as f64 && *e > i32::MAX as f64 {
+            if can_be_i32 && (*e < i32::MIN as f64 || *e > i32::MAX as f64) {
                 can_be_i32 = false;
             }
 
