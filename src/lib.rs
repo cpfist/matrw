@@ -4,7 +4,7 @@
 //!
 //! - Read and write of basic MATLAB array types (numeric, structure, cell, sparse).
 //! - Support of MAT-file compression.
-//! - Convence methods and macros for access and creation of data (see [Untyped interface](#untyped-interface)).
+//! - Convenience methods and macros for access and creation of data (see [Untyped interface](#untyped-interface)).
 //! - Serde interface (see [Typed interface](#typed-interface)).
 //!
 //! # Introduction
