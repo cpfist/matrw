@@ -2,20 +2,22 @@ use std::fmt::{Debug, Display};
 use std::ops::Deref;
 
 use crate::MatrwError;
-use crate::interface::types::array::ArrayType;
+use crate::interface::types::array::{ArrayType, ensure_matching_complex_size};
 use crate::interface::types::matlab_types::MatlabType;
 use crate::interface::types::numeric_array::NumericArray;
 use crate::interface::variable::MatVariable;
 use crate::parser::v7::types::sparse_array::SparseArray7;
 use crate::parser::v7::types::subelements::array_numeric_data::array_data_value::ArrayDataValueVar;
 
+/// Sparse array
+///
+/// The [`SparseArray`] type represents sparse arrays in compressed sparse column (CSC) format.
+///
 #[derive(Debug, Clone)]
 pub struct SparseArray {
     pub dim: Vec<usize>,
     pub ir: Vec<usize>,
     pub jc: Vec<usize>,
-    #[allow(dead_code)]
-    is_comp: bool,
     #[allow(dead_code)]
     null_type: Box<MatVariable>,
     pub value: MatlabType,
@@ -84,55 +86,52 @@ impl ArrayType for SparseArray {
 
 impl SparseArray {
     pub fn new(
-        dim: Vec<usize>,
+        dim_i: usize,
+        dim_j: usize,
         ir: Vec<usize>,
         jc: Vec<usize>,
-        is_comp: bool,
         value: MatlabType,
         value_cmp: Option<MatlabType>,
     ) -> Result<Self, MatrwError> {
-        if !dim.is_empty() {
-            let elem_from_dim = ir.len();
-            let elem_provided = value.len();
-            if elem_from_dim != elem_provided {
-                return Err(MatrwError::TypeConstruction(format!(
-                    "Specified dimension {} does not match number of elements {}.",
-                    elem_from_dim, elem_provided
-                )));
-            }
+        // Plausibility checks
+        if let Some(cmp) = &value_cmp {
+            ensure_matching_complex_size(value.len(), cmp.len())?;
         }
 
+        let max_elem = dim_i * dim_j;
+        if value.len() > max_elem {
+            return Err(MatrwError::TypeConstruction(format!(
+                "More value elements ({}) than allowed by dimension ({}).",
+                value.len(),
+                max_elem
+            )));
+        }
+
+        if ir.len() != value.len() {
+            return Err(MatrwError::TypeConstruction(format!(
+                "Specified ir size {} does not match number of elements {}.",
+                ir.len(),
+                value.len()
+            )));
+        }
+
+        let is_comp = value_cmp.is_some();
         let null_type = match value {
-            MatlabType::BOOL(_) if !is_comp => MatVariable::NumericArray(
-                NumericArray::new(vec![1, 1], MatlabType::from(vec![false]), None).unwrap(),
-            ),
-            MatlabType::BOOL(_) if is_comp => MatVariable::NumericArray(
-                NumericArray::new(
-                    vec![1, 1],
-                    MatlabType::from(vec![false]),
-                    Some(MatlabType::from(vec![false])),
-                )
-                .unwrap(),
-            ),
-            MatlabType::F64(_) if !is_comp => MatVariable::NumericArray(
-                NumericArray::new(vec![1, 1], MatlabType::from(vec![0.0]), None).unwrap(),
-            ),
-            MatlabType::F64(_) if is_comp => MatVariable::NumericArray(
-                NumericArray::new(
-                    vec![1, 1],
-                    MatlabType::from(vec![0.0]),
-                    Some(MatlabType::from(vec![0.0])),
-                )
-                .unwrap(),
-            ),
-            _ => panic!("Should not be triggered"),
+            MatlabType::BOOL(_) if !is_comp => MatVariable::from(false),
+            MatlabType::BOOL(_) if is_comp => MatVariable::from((false, false)),
+            MatlabType::F64(_) if !is_comp => MatVariable::from(0.0),
+            MatlabType::F64(_) if is_comp => MatVariable::from((0.0, 0.0)),
+            _ => {
+                return Err(MatrwError::TypeConstruction(
+                    "Sparse matrix can only be of type bool or f64".to_string(),
+                ));
+            }
         };
 
         Ok(Self {
-            dim,
+            dim: vec![dim_i, dim_j],
             ir,
             jc,
-            is_comp,
             null_type: Box::new(null_type),
             value,
             value_cmp,
@@ -153,7 +152,8 @@ impl From<SparseArray7> for SparseArray {
         use ArrayDataValueVar::*;
 
         let (_name, dim, ir, jc, val, val_cmp) = value.value();
-        let is_comp = val_cmp.is_some();
+        let dim_i = dim[0];
+        let dim_j = dim[1];
 
         let value = match val {
             ArrayValueU8(v) => MatlabType::U8(v),
@@ -171,29 +171,24 @@ impl From<SparseArray7> for SparseArray {
             ArrayValueBOOL(v) => MatlabType::BOOL(v),
         };
 
-        let value_cmp = if val_cmp.is_some() {
-            let tmp = match val_cmp {
-                Some(ArrayValueU8(v)) => MatlabType::U8(v),
-                Some(ArrayValueI8(v)) => MatlabType::I8(v),
-                Some(ArrayValueU16(v)) => MatlabType::U16(v),
-                Some(ArrayValueI16(v)) => MatlabType::I16(v),
-                Some(ArrayValueU32(v)) => MatlabType::U32(v),
-                Some(ArrayValueI32(v)) => MatlabType::I32(v),
-                Some(ArrayValueU64(v)) => MatlabType::U64(v),
-                Some(ArrayValueI64(v)) => MatlabType::I64(v),
-                Some(ArrayValueF32(v)) => MatlabType::F32(v),
-                Some(ArrayValueF64(v)) => MatlabType::F64(v),
-                Some(ArrayValueUTF8(v)) => MatlabType::UTF8(v),
-                Some(ArrayValueUTF16(v)) => MatlabType::UTF16(v),
-                Some(ArrayValueBOOL(v)) => MatlabType::BOOL(v),
-                _ => panic!("This should not happen"),
-            };
-            Some(tmp)
-        } else {
-            None
+        let value_cmp = match val_cmp {
+            Some(ArrayValueU8(v)) => Some(MatlabType::U8(v)),
+            Some(ArrayValueI8(v)) => Some(MatlabType::I8(v)),
+            Some(ArrayValueU16(v)) => Some(MatlabType::U16(v)),
+            Some(ArrayValueI16(v)) => Some(MatlabType::I16(v)),
+            Some(ArrayValueU32(v)) => Some(MatlabType::U32(v)),
+            Some(ArrayValueI32(v)) => Some(MatlabType::I32(v)),
+            Some(ArrayValueU64(v)) => Some(MatlabType::U64(v)),
+            Some(ArrayValueI64(v)) => Some(MatlabType::I64(v)),
+            Some(ArrayValueF32(v)) => Some(MatlabType::F32(v)),
+            Some(ArrayValueF64(v)) => Some(MatlabType::F64(v)),
+            Some(ArrayValueUTF8(v)) => Some(MatlabType::UTF8(v)),
+            Some(ArrayValueUTF16(v)) => Some(MatlabType::UTF16(v)),
+            Some(ArrayValueBOOL(v)) => Some(MatlabType::BOOL(v)),
+            None => None,
         };
 
-        Self::new(dim, ir, jc, is_comp, value, value_cmp).unwrap()
+        Self::new(dim_i, dim_j, ir, jc, value, value_cmp).unwrap()
     }
 }
 
@@ -232,12 +227,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn sparse_index_0x0() {
+        let dim_i = 0;
+        let dim_j = 0;
+        let ir = vec![];
+        let jc = vec![0];
+        let a = MatlabType::from(Vec::<f64>::new());
+        let m = MatVariable::SparseArray(SparseArray::new(dim_i, dim_j, ir, jc, a, None).unwrap());
+
+        println!("m: {}", m);
+
+        assert_eq!(m.elem([0, 0]).to_f64(), None);
+    }
+    #[test]
     fn sparse_index_1x1() {
-        let dim = vec![1, 1];
+        let dim_i = 1;
+        let dim_j = 1;
         let ir = vec![0];
         let jc = vec![0, 1];
         let a = MatlabType::from(vec![9.0]);
-        let m = MatVariable::SparseArray(SparseArray::new(dim, ir, jc, false, a, None).unwrap());
+        let m = MatVariable::SparseArray(SparseArray::new(dim_i, dim_j, ir, jc, a, None).unwrap());
 
         println!("m: {}", m);
 
@@ -245,11 +254,12 @@ mod tests {
     }
     #[test]
     fn sparse_index_2x2() {
-        let dim = vec![2, 2];
+        let dim_i = 2;
+        let dim_j = 2;
         let ir = vec![0, 1, 0, 1];
         let jc = vec![0, 2, 4];
         let a = MatlabType::from(vec![1.0, 2.0, 3.0, 4.0]);
-        let m = MatVariable::SparseArray(SparseArray::new(dim, ir, jc, false, a, None).unwrap());
+        let m = MatVariable::SparseArray(SparseArray::new(dim_i, dim_j, ir, jc, a, None).unwrap());
 
         println!("m: {}", m);
 
@@ -260,11 +270,12 @@ mod tests {
     }
     #[test]
     fn sparse_index_5x5() {
-        let dim = vec![5, 5];
+        let dim_i = 5;
+        let dim_j = 5;
         let ir = vec![0, 0, 0, 0, 0];
         let jc = vec![0, 1, 2, 3, 4, 5];
         let a = MatlabType::from(vec![2.5, 5.0, 7.5, 10.0, 12.5]);
-        let m = MatVariable::SparseArray(SparseArray::new(dim, ir, jc, false, a, None).unwrap());
+        let m = MatVariable::SparseArray(SparseArray::new(dim_i, dim_j, ir, jc, a, None).unwrap());
 
         println!("m: {}", m);
 
@@ -279,11 +290,12 @@ mod tests {
     }
     #[test]
     fn sparse_index_3x3() {
-        let dim = vec![3, 3];
+        let dim_i = 3;
+        let dim_j = 3;
         let ir = vec![1];
         let jc = vec![0, 0, 1, 1];
         let a = MatlabType::from(vec![1.0]);
-        let m = MatVariable::SparseArray(SparseArray::new(dim, ir, jc, false, a, None).unwrap());
+        let m = MatVariable::SparseArray(SparseArray::new(dim_i, dim_j, ir, jc, a, None).unwrap());
 
         println!("m: {}", m);
 

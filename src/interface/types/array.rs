@@ -1,4 +1,4 @@
-use crate::interface::variable::MatVariable;
+use crate::{MatrwError, interface::variable::MatVariable};
 
 /// Trait methods that array types share
 pub trait ArrayType {
@@ -64,4 +64,38 @@ macro_rules! impl_Array_for {
             }
         }
     };
+}
+
+pub fn ensure_matching_dimension(elem_from_dim: usize, elem_provided: usize) -> Result<(), MatrwError> {
+    if elem_from_dim != elem_provided {
+        Err(MatrwError::TypeConstruction(format!(
+            "Specified size from dimension {} does not match number of elements {}.",
+            elem_from_dim, elem_provided
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn ensure_matching_complex_size(value_len: usize, value_comp_len: usize) -> Result<(), MatrwError> {
+    if value_len != value_comp_len {
+        Err(MatrwError::TypeConstruction(format!(
+            "Size of real ({}) and complex ({}) data of different size.",
+            value_len, value_comp_len
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn normalize_dimension(dim: Vec<usize>, value_len: usize) -> Vec<usize> {
+    if dim.is_empty() || (dim.len() == 1 && dim[0] > 0) {
+        // Normalize the dimension vector. 1D-arrays are treated as 2D-matrices in
+        // MAT-files.
+        vec![1, value_len]
+    } else if dim.len() == 1 && dim[0] == 0 {
+        vec![0, 0]
+    } else {
+        dim
+    }
 }

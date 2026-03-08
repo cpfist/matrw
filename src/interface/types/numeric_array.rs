@@ -7,7 +7,9 @@ use std::fmt::{Debug, Display};
 use std::mem::discriminant;
 
 use crate::MatrwError;
-use crate::interface::types::array::ArrayType;
+use crate::interface::types::array::{
+    ArrayType, ensure_matching_complex_size, ensure_matching_dimension, normalize_dimension,
+};
 use crate::interface::types::matlab_types::{MatlabType, MatlabTypeMarker};
 use crate::interface::types::sparse_array::SparseArray;
 use crate::interface::variable::MatVariable;
@@ -116,25 +118,16 @@ impl NumericArray {
         value: MatlabType,
         value_cmp: Option<MatlabType>,
     ) -> Result<Self, MatrwError> {
-        // Assert that dimensions match to number of values
+        // Ensure dimensions match number of values
         if !dim.is_empty() {
-            let elem_from_dim = dim.iter().product::<usize>();
-            let elem_provided = value.len();
-            if elem_from_dim != elem_provided {
-                return Err(MatrwError::TypeConstruction(format!(
-                    "Specified dimension {} does not match number of elements {}.",
-                    elem_from_dim, elem_provided
-                )));
-            }
+            ensure_matching_dimension(dim.iter().product::<usize>(), value.len())?;
         }
-
-        let dim = if dim.is_empty() || dim.len() == 1 {
-            // Normalize the dimension vector. Even 1D arrays are treated as 2D matrices in
-            // MAT-files.
-            vec![1, value.len()]
-        } else {
-            dim
-        };
+        // Ensure number of real and complex values match
+        if let Some(cmp) = &value_cmp {
+            ensure_matching_complex_size(value.len(), cmp.len())?;
+        }
+        // Normalize dimensions
+        let dim = normalize_dimension(dim, value.len());
 
         Ok(Self {
             dim,
@@ -168,19 +161,17 @@ impl NumericArray {
                 ));
             }
 
-            let dim = if dim.is_empty() || dim.len() == 1 {
-                // Normalize the dimension vector. Even 1D arrays are treated as 2D matrices in
-                // MAT-files.
-                vec![1, value.len()]
-            } else {
-                dim
-            };
+            let dim = normalize_dimension(dim, value.len());
 
             let mut value_new = vec![];
             for v in value.iter() {
                 match v {
                     MatVariable::NumericArray(x) => value_new.push(x.value.clone()),
-                    _ => panic!(),
+                    _ => {
+                        return Err(MatrwError::TypeConstruction(
+                            "Expected MatVariable::NumericArray".to_string(),
+                        ));
+                    }
                 }
             }
 
@@ -188,13 +179,16 @@ impl NumericArray {
 
             let value_comp_new = if value.first().unwrap().is_complex().unwrap() {
                 let mut value_comp_new = vec![];
-
                 for v in value.iter() {
                     match v {
                         MatVariable::NumericArray(x) => {
                             value_comp_new.push(x.value_cmp.as_ref().unwrap().clone())
                         }
-                        _ => panic!(),
+                        _ => {
+                            return Err(MatrwError::TypeConstruction(
+                                "Expected MatVariable::NumericArray".to_string(),
+                            ));
+                        }
                     }
                 }
 
@@ -294,13 +288,18 @@ impl NumericArray {
             return None;
         }
 
-        let is_comp = self.is_complex();
         let n_rows = self.dim[0];
         let n_cols = self.dim[1];
-        let (ir, jc, data) = self.value.to_sparse(n_rows, n_cols);
+        let (ir, jc, data_real) = self.value.to_sparse(n_rows, n_cols);
+        let data_comp = if let Some(value_comp) = self.value_cmp {
+            let (_, _, data_comp) = value_comp.to_sparse(n_rows, n_cols);
+            Some(data_comp)
+        } else {
+            None
+        };
 
         Some(MatVariable::SparseArray(
-            SparseArray::new(self.dim.clone(), ir, jc, is_comp, data, None).unwrap(),
+            SparseArray::new(self.dim[0], self.dim[1], ir, jc, data_real, data_comp).unwrap(),
         ))
     }
 
@@ -335,26 +334,21 @@ impl From<NumericArray7> for NumericArray {
             ArrayValueBOOL(v) => MatlabType::BOOL(v),
         };
 
-        let value_cmp = if val_cmp.is_some() {
-            let tmp = match val_cmp {
-                Some(ArrayValueU8(v)) => MatlabType::U8(v),
-                Some(ArrayValueI8(v)) => MatlabType::I8(v),
-                Some(ArrayValueU16(v)) => MatlabType::U16(v),
-                Some(ArrayValueI16(v)) => MatlabType::I16(v),
-                Some(ArrayValueU32(v)) => MatlabType::U32(v),
-                Some(ArrayValueI32(v)) => MatlabType::I32(v),
-                Some(ArrayValueU64(v)) => MatlabType::U64(v),
-                Some(ArrayValueI64(v)) => MatlabType::I64(v),
-                Some(ArrayValueF32(v)) => MatlabType::F32(v),
-                Some(ArrayValueF64(v)) => MatlabType::F64(v),
-                Some(ArrayValueUTF8(v)) => MatlabType::UTF8(v),
-                Some(ArrayValueUTF16(v)) => MatlabType::UTF16(v),
-                Some(ArrayValueBOOL(v)) => MatlabType::BOOL(v),
-                _ => panic!("This should not happen"),
-            };
-            Some(tmp)
-        } else {
-            None
+        let value_cmp = match val_cmp {
+            Some(ArrayValueU8(v)) => Some(MatlabType::U8(v)),
+            Some(ArrayValueI8(v)) => Some(MatlabType::I8(v)),
+            Some(ArrayValueU16(v)) => Some(MatlabType::U16(v)),
+            Some(ArrayValueI16(v)) => Some(MatlabType::I16(v)),
+            Some(ArrayValueU32(v)) => Some(MatlabType::U32(v)),
+            Some(ArrayValueI32(v)) => Some(MatlabType::I32(v)),
+            Some(ArrayValueU64(v)) => Some(MatlabType::U64(v)),
+            Some(ArrayValueI64(v)) => Some(MatlabType::I64(v)),
+            Some(ArrayValueF32(v)) => Some(MatlabType::F32(v)),
+            Some(ArrayValueF64(v)) => Some(MatlabType::F64(v)),
+            Some(ArrayValueUTF8(v)) => Some(MatlabType::UTF8(v)),
+            Some(ArrayValueUTF16(v)) => Some(MatlabType::UTF16(v)),
+            Some(ArrayValueBOOL(v)) => Some(MatlabType::BOOL(v)),
+            _ => None,
         };
 
         Self::new(dim, value, value_cmp).expect("Could not create NumericArray.")
@@ -472,25 +466,33 @@ fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>
     let n_cols = rows[0].dim().iter().product();
     let n_rows = rows.len();
 
-    let rows_vec = rows
-        .iter()
-        .map(|x| match x {
-            MatVariable::NumericArray(v) => v.value.clone(),
-            _ => panic!(),
-        })
-        .collect::<Vec<MatlabType>>();
+    let mut rows_vec = vec![];
+    for v in rows.iter() {
+        match v {
+            MatVariable::NumericArray(x) => rows_vec.push(x.value.clone()),
+            _ => {
+                return Err(MatrwError::TypeConstruction(
+                    "Expected MatVariable::NumericArray".to_string(),
+                ));
+            }
+        }
+    }
 
     let value = MatlabType::join(rows_vec).unwrap();
     let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
 
     let value_cmp = if is_complex {
-        let rows_vec = rows
-            .iter()
-            .map(|x| match x {
-                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
-                _ => panic!(),
-            })
-            .collect::<Vec<MatlabType>>();
+        let mut rows_vec = vec![];
+        for v in rows.iter() {
+            match v {
+                MatVariable::NumericArray(x) => rows_vec.push(x.value_cmp.as_ref().unwrap().clone()),
+                _ => {
+                    return Err(MatrwError::TypeConstruction(
+                        "Expected MatVariable::NumericArray".to_string(),
+                    ));
+                }
+            }
+        }
 
         let value = MatlabType::join(rows_vec).unwrap();
         let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
@@ -528,23 +530,32 @@ fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>
     let n_rows = cols[0].dim().iter().product();
     let n_cols = cols.len();
 
-    let cols_vec = cols
-        .iter()
-        .map(|x| match x {
-            MatVariable::NumericArray(v) => v.value.clone(),
-            _ => panic!(),
-        })
-        .collect::<Vec<MatlabType>>();
+    let mut cols_vec = vec![];
+    for v in cols.iter() {
+        match v {
+            MatVariable::NumericArray(x) => cols_vec.push(x.value.clone()),
+            _ => {
+                return Err(MatrwError::TypeConstruction(
+                    "Expected MatVariable::NumericArray".to_string(),
+                ));
+            }
+        }
+    }
+
     let value = MatlabType::join(cols_vec).unwrap();
 
     let value_cmp = if is_complex {
-        let cols_vec = cols
-            .iter()
-            .map(|x| match x {
-                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
-                _ => panic!(),
-            })
-            .collect::<Vec<MatlabType>>();
+        let mut cols_vec = vec![];
+        for v in cols.iter() {
+            match v {
+                MatVariable::NumericArray(x) => cols_vec.push(x.value_cmp.as_ref().unwrap().clone()),
+                _ => {
+                    return Err(MatrwError::TypeConstruction(
+                        "Expected MatVariable::NumericArray".to_string(),
+                    ));
+                }
+            }
+        }
 
         let value = MatlabType::join(cols_vec).unwrap();
         let value = MatlabType::row_vec_to_colmaj(value, n_rows, n_cols);
@@ -585,23 +596,31 @@ fn flatten_higher_dim_nested_array(value: Vec<MatVariable>) -> Result<(Vec<usize
         .flatten()
         .collect();
 
-    let new_value = value
-        .iter()
-        .map(|x| match x {
-            MatVariable::NumericArray(v) => v.value.clone(),
-            _ => panic!(),
-        })
-        .collect::<Vec<MatlabType>>();
+    let mut new_value = vec![];
+    for v in value.iter() {
+        match v {
+            MatVariable::NumericArray(x) => new_value.push(x.value.clone()),
+            _ => {
+                return Err(MatrwError::TypeConstruction(
+                    "Expected MatVariable::NumericArray".to_string(),
+                ));
+            }
+        }
+    }
     let new_value = MatlabType::join(new_value).unwrap();
 
     let new_value_cmp = if is_complex {
-        let new_value_cmp = value
-            .iter()
-            .map(|x| match x {
-                MatVariable::NumericArray(v) => v.value_cmp.as_ref().unwrap().clone(),
-                _ => panic!(),
-            })
-            .collect::<Vec<MatlabType>>();
+        let mut new_value_cmp = vec![];
+        for v in value.iter() {
+            match v {
+                MatVariable::NumericArray(x) => new_value_cmp.push(x.value_cmp.as_ref().unwrap().clone()),
+                _ => {
+                    return Err(MatrwError::TypeConstruction(
+                        "Expected MatVariable::NumericArray".to_string(),
+                    ));
+                }
+            }
+        }
         Some(MatlabType::join(new_value_cmp).unwrap())
     } else {
         None

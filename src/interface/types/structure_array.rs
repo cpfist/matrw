@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use indexmap::IndexMap;
 
-use crate::interface::types::array::ArrayType;
+use crate::interface::types::array::{ArrayType, ensure_matching_dimension, normalize_dimension};
 use crate::interface::types::structure::Structure;
 use crate::interface::variable::MatVariable;
 use crate::parser::v7::types::structure_array::StructureArray7;
@@ -24,15 +24,10 @@ impl StructureArray {
         value: Vec<MatVariable>,
     ) -> Result<Self, MatrwError> {
         if !dim.is_empty() {
-            let elem_from_dim = dim.iter().product::<usize>() * fieldnames.len();
-            let elem_provided = value.len();
-            if elem_from_dim != elem_provided {
-                return Err(MatrwError::TypeConstruction(format!(
-                    "Specified dimension {} does not match number of elements {}.",
-                    elem_from_dim, elem_provided
-                )));
-            }
+            ensure_matching_dimension(dim.iter().product::<usize>() * fieldnames.len(), value.len())?;
         }
+
+        let dim = normalize_dimension(dim, value.len());
 
         let mut val = Vec::new();
         let mut v = value.into_iter();
