@@ -4,6 +4,7 @@ use paste::paste;
 use std::fmt::{Debug, Display};
 use std::ops;
 
+use crate::check_same_fields;
 use crate::interface::index::Index;
 use crate::interface::types::array::ArrayType;
 use crate::interface::types::cell_array::CellArray;
@@ -793,6 +794,40 @@ where
             )
             .expect("Could not create NumericArray."),
         )
+    }
+}
+
+/// Create a `MatVariable` from `Vec<MatVariable>`
+///
+/// If vector contains `n` structs of same topology, create `1xn` [`MatVariable::StructureArray`],
+/// otherwise create `1xn` [`MatVariable::CellArray`].
+///
+/// # Example
+///
+/// ```
+/// # use matrw::{MatVariable, matvar};
+/// let vec: Vec<MatVariable> = vec![
+///     matvar!({
+///         a: 1,
+///         b: 2,
+///     }),
+///     matvar!({
+///         a: 42,
+///         b: 43,
+///     })
+/// ];
+///
+/// let var: MatVariable = vec.into();
+/// ```
+impl From<Vec<MatVariable>> for MatVariable {
+    fn from(value: Vec<MatVariable>) -> Self {
+        // If inputs are structs with all equal fieldnames, make a struct array,
+        // otherwise make a cell array.
+        if value.iter().all(|x| matches!(x, MatVariable::Structure(_))) && check_same_fields(&value) {
+            MatVariable::StructureArray(StructureArray::from_structures(vec![1, value.len()], value))
+        } else {
+            MatVariable::CellArray(CellArray::new(vec![1, value.len()], value).unwrap())
+        }
     }
 }
 
