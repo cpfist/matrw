@@ -662,14 +662,14 @@ mod tests {
     use crate::OwnedIndex;
 
     #[test]
-    fn assert_wrong_dim() {
+    fn wrong_dim() {
         let a: Vec<f64> = vec![1.0, 2.0, 3.0];
         let m = NumericArray::new(vec![1, 4], MatlabType::from(a), None);
 
         assert!(matches!(m.expect_err(""), MatrwError::TypeConstruction(_)));
     }
     #[test]
-    fn assert_mixed_dim() {
+    fn mixed_dim() {
         let matrix_row1_raw = vec![1.0, 2.0];
         let matrix_row2_raw = vec![3.0];
         let matrix_row1 = MatVariable::NumericArray(
@@ -683,28 +683,28 @@ mod tests {
         assert!(matches!(matrix.expect_err(""), MatrwError::TypeConstruction(_)));
     }
     #[test]
-    fn numeric_array_view_1x9_real() {
+    fn numeric_array_1x9_real() {
         let a: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let m = NumericArray::new(vec![1, 9], MatlabType::from(a), None).unwrap();
 
         println!("{m}");
     }
     #[test]
-    fn view_9x1_real() {
+    fn numeric_array_9x1_real() {
         let a: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let m = NumericArray::new(vec![9, 1], MatlabType::from(a), None).unwrap();
 
         println!("{m}");
     }
     #[test]
-    fn view_3x3_real() {
+    fn numeric_array_3x3_real() {
         let a: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let m = NumericArray::new(vec![3, 3], MatlabType::from(a), None).unwrap();
 
         println!("{m}");
     }
     #[test]
-    fn view_3x3x2x2_complex() {
+    fn numeric_array_3x3x2x2_complex() {
         let a: Vec<f64> = vec![
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0,
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0,
@@ -727,7 +727,7 @@ mod tests {
         println!("{m}");
     }
     #[test]
-    fn view_2x2x2_real_nested() {
+    fn numeric_array_2x2x2_real_nested() {
         let matrix1_row1_raw = vec![1.0, 2.0];
         let matrix1_row2_raw = vec![3.0, 4.0];
         let matrix1_row1 = MatVariable::NumericArray(
@@ -768,7 +768,7 @@ mod tests {
         println!("{m}");
     }
     #[test]
-    fn view_9x2_real_nested() {
+    fn numeric_array_9x2_real_nested() {
         let col1_raw: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let col2_raw: Vec<f64> = vec![11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0];
         let col1 = MatVariable::NumericArray(
@@ -816,7 +816,7 @@ mod tests {
         println!("{m}");
     }
     #[test]
-    fn to_sparse() {
+    fn sparse_conversion() {
         let a: Vec<f64> = vec![1.0, 0.0, 4.0, 0.0, 0.0, 3.0, 5.0, 7.0, 2.0, 0.0, 6.0, 0.0];
         let m = NumericArray::new(vec![4, 3], MatlabType::from(a), None).unwrap();
 
