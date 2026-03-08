@@ -145,19 +145,75 @@ impl MatlabType {
         (ir, jc, MatlabType::from(v))
     }
 
-    pub fn print(&self, f: &mut std::fmt::Formatter<'_>, index: usize, cmp: bool, max_width: usize) -> std::fmt::Result {
+    pub fn print(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        index: usize,
+        cmp: bool,
+        max_width: usize,
+    ) -> std::fmt::Result {
         if cmp {
             match self {
-                U8(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                I8(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                U16(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                I16(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                U32(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                I32(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                U64(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                I64(items) => write!(f, "{:<width$}", format!(" + {}i", items[index]), width = max_width + 2),
-                F32(items) => write!(f, "{:<width$}", format!(" + {:.4e}i", items[index]), width = max_width + 2),
-                F64(items) => write!(f, "{:<width$}", format!(" + {:.4e}i", items[index]), width = max_width + 2),
+                U8(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                I8(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                U16(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                I16(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                U32(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                I32(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                U64(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                I64(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {}i", items[index]),
+                    width = max_width + 2
+                ),
+                F32(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {:.4e}i", items[index]),
+                    width = max_width + 2
+                ),
+                F64(items) => write!(
+                    f,
+                    "{:<width$}",
+                    format!(" + {:.4e}i", items[index]),
+                    width = max_width + 2
+                ),
                 _ => unimplemented!("No complex printing for type {:?}", self),
             }
         } else {
@@ -170,8 +226,18 @@ impl MatlabType {
                 I32(items) => write!(f, "{:>width$}", items[index], width = max_width),
                 U64(items) => write!(f, "{:>width$}", items[index], width = max_width),
                 I64(items) => write!(f, "{:>width$}", items[index], width = max_width),
-                F32(items) => write!(f, "{:>width$}", format!("{:.4e}", items[index]), width = max_width),
-                F64(items) => write!(f, "{:>width$}", format!("{:.4e}", items[index]), width = max_width),
+                F32(items) => write!(
+                    f,
+                    "{:>width$}",
+                    format!("{:.4e}", items[index]),
+                    width = max_width
+                ),
+                F64(items) => write!(
+                    f,
+                    "{:>width$}",
+                    format!("{:.4e}", items[index]),
+                    width = max_width
+                ),
                 UTF8(items) => write!(f, "{:>width$}", items[index], width = max_width),
                 UTF16(items) => write!(f, "{:>width$}", items[index], width = max_width),
                 BOOL(items) => write!(f, "{:>width$}", items[index], width = max_width),

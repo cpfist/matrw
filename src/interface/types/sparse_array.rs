@@ -201,6 +201,8 @@ impl Display for SparseArray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f)?;
 
+        let max_width = self.value.max_width();
+
         for j in 0..self.jc.len() - 1 {
             let jc = self.jc[j];
             let nc = self.jc[j + 1] - jc;
@@ -213,7 +215,8 @@ impl Display for SparseArray {
                 let ir = self.ir[l];
 
                 write!(f, "   ({},{})\t", ir, j)?;
-                write!(f, "{}", self.get_clone_colmaj(l).unwrap())?;
+                self.value.print(f, l, false, max_width)?;
+                self.value_cmp.as_ref().map(|v| v.print(f, l, true, max_width));
                 writeln!(f)?;
             }
         }

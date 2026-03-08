@@ -423,7 +423,7 @@ impl Display for NumericArray {
 
             for r in 0..self.dim[0] {
                 for c in 0..self.dim[1] {
-                    let idx = global_index + c*self.dim[0] + r;
+                    let idx = global_index + c * self.dim[0] + r;
                     self.value.print(f, idx, false, max_width)?;
                     self.value_cmp.as_ref().map(|v| v.print(f, idx, true, max_width));
                 }
