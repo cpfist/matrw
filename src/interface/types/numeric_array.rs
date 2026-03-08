@@ -446,7 +446,9 @@ impl Display for NumericArray {
 /// Convert a row vectors into a column-major representation
 ///
 ///
-fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+fn nested_row_vecs_to_colmaj_array(
+    rows: Vec<MatVariable>,
+) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
     // Assert that all nested arrays have the same dimension and complex property
     let dim = rows.first().unwrap().dim();
     let is_complex = rows.first().unwrap().is_complex().unwrap();
@@ -510,7 +512,9 @@ fn nested_row_vecs_to_colmaj_array(rows: Vec<MatVariable>) -> Result<(Vec<usize>
 /// Convert a col vectors into a column-major representation
 ///
 ///
-fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+fn nested_col_vecs_to_colmaj_array(
+    cols: Vec<MatVariable>,
+) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
     // Assert that all nested arrays have the same dimension and complex property
     let dim = cols.first().unwrap().dim();
     let is_complex = cols.first().unwrap().is_complex().unwrap();
@@ -565,7 +569,6 @@ fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>
         None
     };
 
-
     let dim = vec![n_rows, n_cols];
 
     Ok((dim, value, value_cmp))
@@ -574,7 +577,9 @@ fn nested_col_vecs_to_colmaj_array(cols: Vec<MatVariable>) -> Result<(Vec<usize>
 /// Flatten a nested array into a column-major representation
 ///
 ///
-fn flatten_higher_dim_nested_array(value: Vec<MatVariable>) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
+fn flatten_higher_dim_nested_array(
+    value: Vec<MatVariable>,
+) -> Result<(Vec<usize>, MatlabType, Option<MatlabType>), MatrwError> {
     // Assert that all nested arrays have the same dimension and complex property
     let dim = value.first().unwrap().dim();
     let is_complex = value.first().unwrap().is_complex().unwrap();

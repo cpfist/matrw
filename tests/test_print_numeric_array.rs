@@ -69,4 +69,3 @@ print_type_complex!(u64, 1u64, u64::MIN, u64::MAX);
 print_type_complex!(i64, 1i64, i64::MIN, i64::MAX);
 print_type_complex!(f32, 1f32, f32::MIN, f32::MAX);
 print_type_complex!(f64, 1f64, f64::MIN, f64::MAX);
-

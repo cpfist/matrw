@@ -19,7 +19,7 @@ macro_rules! compression_test_runner {
 }
 
 /// Test the compession in the v7 write module.
-/// When suitable 
+/// When suitable
 #[test]
 fn compression() {
     let file = TestFile {
@@ -36,4 +36,3 @@ fn compression() {
     compression_test_runner!(file.path, f64::MIN);
     compression_test_runner!(file.path, f64::MAX);
 }
-

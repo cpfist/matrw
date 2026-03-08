@@ -126,7 +126,7 @@ impl ArrayDataNew<f64> for ArrayData {
         let mut can_be_u32 = true;
         let mut can_be_i32 = true;
 
-        // Test for each f64 array element, if it can be represented by a 
+        // Test for each f64 array element, if it can be represented by a
         // smaller integer type.
         for e in &value {
             if e.fract() != 0.0 {
