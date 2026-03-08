@@ -1,5 +1,3 @@
-use std::u8;
-
 use matrw::*;
 
 #[path = "shared_functions.rs"]

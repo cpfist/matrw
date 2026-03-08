@@ -71,12 +71,10 @@ pub enum MatVariable {
     /// into
     /// - scalar types,
     /// - [`Vec`] types,
-    /// - [`nalgebra::DMatrix`] (requires feature `nalgebra`).
     ///
     /// For example, `f64` data can be converted by
     /// - [`MatVariable::to_f64`], to return the first value of the data as scalar,
     /// - [`MatVariable::to_vec_f64`], to return a clone of the variable data,
-    /// - [`MatVariable::to_na_matrix()`], to return a `DMatrix`.
     ///
     /// ```
     /// # use matrw::{matvar};

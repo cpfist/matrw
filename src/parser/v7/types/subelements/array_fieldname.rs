@@ -110,7 +110,7 @@ impl ArrayFieldNames {
         }
     }
     pub fn size(&self) -> u32 {
-        let padding = if (self.data_size % 8) == 0 {
+        let padding = if self.data_size.is_multiple_of(8) {
             0
         } else {
             8 - self.data_size % 8
