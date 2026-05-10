@@ -5,7 +5,7 @@ use matrw::*;
 #[path = "../tests/shared_functions.rs"]
 mod shared_functions;
 
-use crate::shared_functions::{MatlabCommand, TestFile};
+use crate::shared_functions::{OctaveCommand, TestFile};
 
 /// Read data from MAT-file
 fn read_data(filepath: &str) {
@@ -17,7 +17,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         path: "benches/large.mat",
     };
 
-    let out = MatlabCommand::run("benches/large_file.m");
+    let out = OctaveCommand::run("benches/large_file.m");
     println!("error output: {}", out);
 
     let mut group = c.benchmark_group("read large MAT-files");
