@@ -312,6 +312,8 @@
 pub mod interface;
 #[doc(hidden)]
 pub mod parser;
+#[doc(hidden)]
+pub mod helper;
 
 #[doc(hidden)]
 pub mod __private {

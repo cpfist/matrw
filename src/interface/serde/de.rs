@@ -2,6 +2,8 @@
 
 use crate::MatFile;
 use crate::MatrwError;
+#[cfg(feature = "ndarray")]
+use crate::{matvar, helper::ndarray_conversion::{mat_col_to_ndarray_row, mat_dim_to_ndarray_dim}};
 
 use serde::Deserialize;
 

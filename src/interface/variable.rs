@@ -5,6 +5,9 @@ use std::fmt::{Debug, Display};
 use std::ops;
 
 use crate::check_same_fields;
+#[cfg(feature = "ndarray")]
+use {ndarray, ndarray::ShapeBuilder, num_complex::Complex};
+
 use crate::interface::index::Index;
 use crate::interface::types::array::ArrayType;
 use crate::interface::types::cell_array::CellArray;
@@ -498,6 +501,67 @@ impl MatVariable {
     pub fn iter(&self) -> MatVariableIterator<'_> {
         MatVariableIterator::new(self)
     }
+
+    /// If [`MatVariable`] is of type [`MatVariable::NumericArray`],
+    /// return a [`ndarray::ArrayD`]. Otherwise, return `None`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use matrw::matvar;
+    /// use ndarray::arr2;
+    ///
+    /// let m = matvar!([[1., 2., 3.], [4., 5., 6.]]);
+    /// let arr = m.to_ndarray::<f64>().unwrap();
+    ///
+    /// assert_eq!(arr[[0,2]], 3.);
+    /// ```
+    #[cfg(feature = "ndarray")]
+    pub fn to_ndarray<T: MatlabTypeMarker>(self) -> Option<ndarray::ArrayD<T>> {
+        match self {
+            MatVariable::NumericArray(_) => {
+                let shape = self.dim().f();
+                let data = self.to_vec().unwrap();
+
+                Some(ndarray::ArrayD::from_shape_vec(shape, data).expect("Error on construction of ndarray::ArrayD."))
+            },
+            _ => None,
+        }
+    }
+
+    /// If [`MatVariable`] is of type [`MatVariable::NumericArray`],
+    /// return a [`ndarray::ArrayD`]. Otherwise, return `None`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use matrw::matvar;
+    /// use ndarray::arr2;
+    ///
+    /// let m = matvar!([[(1., 0.), (2., 0.), (3., 0.)], [(4., 0.), (5., 0.), (6., 0.)]]);
+    /// println!("{m}");
+    /// let arr = m.to_ndarray_comp::<f64>().unwrap();
+    ///
+    /// assert_eq!(arr[[0,2]], 3.0.into());
+    /// ```
+    #[cfg(feature = "ndarray")]
+    pub fn to_ndarray_comp<T: MatlabTypeMarker>(self) -> Option<ndarray::ArrayD<Complex<T>>> {
+        match self {
+            MatVariable::NumericArray(_) if self.is_complex()? => {
+                use num_complex::Complex;
+
+                let shape = self.dim().f();
+                let data_real = self.to_vec().unwrap();
+                let data_comp = self.comp_to_vec().unwrap();
+
+                let data = data_real.into_iter().zip(data_comp).map(|(r,c)| Complex::new(r, c)).collect::<Vec<Complex<T>>>();
+
+                Some(ndarray::ArrayD::from_shape_vec(shape, data).expect("Error on construction of ndarray::ArrayD."))
+            },
+            _ => None,
+        }
+    }
+
 }
 
 macro_rules! impl_MatVariable_to {
@@ -826,6 +890,65 @@ impl From<Vec<MatVariable>> for MatVariable {
         } else {
             MatVariable::CellArray(CellArray::new(vec![1, value.len()], value).unwrap())
         }
+    }
+}
+
+/// Create a `MatVariable` from [`ndarray::ArrayBase`].
+///
+/// # Example
+///
+/// ```
+/// use matrw::{MatVariable, OwnedIndex};
+/// use ndarray::arr2;
+///
+/// let arr = arr2(&[[1., 2., 3.], [4., 5., 6.]]);
+/// let s = MatVariable::from(arr);
+///
+/// assert_eq!(s.elem([0,2]).to_f64(), Some(3.));
+/// ```
+#[cfg(feature = "ndarray")]
+impl<T, D> From<ndarray::ArrayBase<ndarray::OwnedRepr<T>, D>> for MatVariable
+where 
+    T: MatlabTypeMarker,
+    D: ndarray::Dimension,
+{
+    fn from(value: ndarray::ArrayBase<ndarray::OwnedRepr<T>, D>) -> Self {
+        // ArrayBase stores data in row-major order, so we need to transpose it.
+        let value_trans = ndarray::ArrayD::<T>::from_shape_vec(
+            value.shape().f(), 
+            value.t().iter().cloned().collect::<Vec<_>>()
+            ).unwrap();
+
+        let shape = value_trans.shape().to_vec();
+        let (data, _) = value_trans.into_raw_vec_and_offset();
+
+        MatVariable::NumericArray(
+            NumericArray::new(shape, MatlabType::from(data), None)
+                .expect("Could not create NumericArray."),
+        )
+    }
+}
+
+/// Create a [`ndarray::ArrayBase`] from `MatVariable`.
+///
+/// # Example
+///
+/// ```
+/// use matrw::matvar;
+/// use ndarray::arr2;
+///
+/// let m = matvar!([[1., 2., 3.], [4., 5., 6.]]);
+/// let arr: ndarray::ArrayD<f64> = m.into();
+///
+/// assert_eq!(arr[[0,2]], 3.);
+/// ```
+#[cfg(feature = "ndarray")]
+impl<T> From<MatVariable> for ndarray::ArrayD<T>
+where 
+    T: MatlabTypeMarker,
+{
+    fn from(value: MatVariable) -> Self {
+        value.to_ndarray::<T>().unwrap()
     }
 }
 

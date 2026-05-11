@@ -407,6 +407,12 @@ macro_rules! impl_MatlabTypeMarkerZero {
                 *self == 0
             }
         }
+        #[cfg(feature = "ndarray")]
+        impl Zero for Complex<$t1> {
+            fn is_zero(&self) -> bool {
+                *self == 0.into()
+            }
+        }
         )*
     };
 }
@@ -437,6 +443,15 @@ impl Zero for bool {
     }
 }
 
+// impl Zero for Complex<f64> {
+//     fn is_zero(&self) -> bool {
+//         todo!()
+//     }
+// }
+
+#[cfg(feature = "ndarray")]
+use num_complex::Complex;
+
 use MatlabType::*;
 impl_MatlabTypeMarker!(u8, U8);
 impl_MatlabTypeMarker!(i8, I8);
@@ -464,6 +479,7 @@ impl MatlabTypeMarker for f32 {}
 impl MatlabTypeMarker for f64 {}
 impl MatlabTypeMarker for char {}
 impl MatlabTypeMarker for bool {}
+// impl MatlabTypeMarker for Complex<f64> {}
 
 pub trait MatlabTypeMarkerSparse: MatlabTypeMarker {}
 impl MatlabTypeMarkerSparse for f64 {}
