@@ -1,5 +1,4 @@
 use core::fmt;
-use std::fmt::Display;
 
 /// Error types
 #[derive(Debug)]
@@ -39,19 +38,21 @@ impl From<std::io::Error> for MatrwError {
     }
 }
 
+#[cfg(feature = "serde")]
 impl serde::ser::Error for MatrwError {
     fn custom<T>(msg: T) -> Self
     where
-        T: Display,
+        T: std::fmt::Display,
     {
         Self::SerdeError(msg.to_string())
     }
 }
 
+#[cfg(feature = "serde")]
 impl serde::de::Error for MatrwError {
     fn custom<T>(msg: T) -> Self
     where
-        T: Display,
+        T: std::fmt::Display,
     {
         Self::SerdeError(msg.to_string())
     }

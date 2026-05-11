@@ -1,3 +1,4 @@
+#![cfg(feature = "serde")]
 //! Test suite concerning the readout of MAT-file data via the public interface.
 
 use once_cell::sync::Lazy;

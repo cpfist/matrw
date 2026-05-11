@@ -1,3 +1,4 @@
+#![cfg(feature = "serde")]
 //! Test suite concerning the serde interface.
 
 use serde::Serialize;

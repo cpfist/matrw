@@ -213,6 +213,8 @@
 //! Types implementing [`serde::Serialize`] can be serialized into [`MatFile`], using the function [`to_matfile`].
 //!
 //! ```standalone_crate
+//! # #[cfg(feature = "serde")]
+//! # {
 //! use matrw::{save_matfile_v7, to_matfile};
 //! use serde::{Serialize};
 //!
@@ -246,6 +248,7 @@
 //! let _ = save_matfile_v7("test.mat", mat, false);
 //!
 //! # let _ = std::fs::remove_file("test.mat");
+//! # }
 //! ```
 //!
 //! ## Reading MAT-files
@@ -253,6 +256,8 @@
 //! [`MatFile`] can be deserialized into a custom type implementing [`serde::Deserialize`], using the function [`from_matfile`].
 //!
 //! ```standalone_crate
+//! # #[cfg(feature = "serde")]
+//! # {
 //! use matrw::{save_matfile_v7, to_matfile, load_matfile, from_matfile};
 //! use serde::{Deserialize};
 //! # use serde::{Serialize};
@@ -299,6 +304,7 @@
 //! assert_eq!(mat.h.f1, 42.);
 //!
 //! # let _ = std::fs::remove_file("test.mat");
+//! # }
 //! ```
 //!
 
@@ -337,5 +343,6 @@ pub use interface::types::{
     structure::check_same_fields,
 };
 
+#[cfg(feature = "serde")]
 #[doc(inline)]
 pub use interface::serde::{de::from_matfile, ser::to_matfile};

@@ -3,6 +3,7 @@
 use matrw::*;
 use rand::rng;
 use rand_pcg::Pcg64Mcg;
+#[cfg(feature = "serde")]
 use serde::Deserialize;
 
 fn main() {
@@ -109,6 +110,7 @@ fn example3() {
     let m = matfile!(x: x);
     let _ = save_matfile_v7("test.mat", m, false);
 }
+#[cfg(feature = "serde")]
 fn example4() {
     let m = matfile!(
     a: matvar!(vec![1.0, 2.0, 3.0]),
@@ -305,6 +307,7 @@ fn example13() {
     assert_eq!(mat["i"][1]["f3"].to_f64(), Some(2.));
     assert_eq!(mat["k"][1].to_f64(), Some(42.));
 }
+#[cfg(feature = "serde")]
 fn example14() {
     use matrw::{save_matfile_v7, to_matfile};
     use serde::Serialize;
@@ -338,6 +341,7 @@ fn example14() {
     let mat = to_matfile(data).expect("Cannot serialize data");
     let _ = save_matfile_v7("test.mat", mat, false);
 }
+#[cfg(feature = "serde")]
 fn example15() {
     use matrw::{from_matfile, load_matfile};
     use serde::Deserialize;
@@ -367,6 +371,7 @@ fn example15() {
     assert_eq!(mat.e, "asd".to_string());
     assert_eq!(mat.h.f1, 42.);
 }
+#[cfg(feature = "serde")]
 fn example16() {
     use matrw::{from_matfile, load_matfile, save_matfile_v7, to_matfile};
     use serde::{Deserialize, Serialize};
