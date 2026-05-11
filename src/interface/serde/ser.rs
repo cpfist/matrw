@@ -954,6 +954,8 @@ mod tests {
         let serializer = MatFileSerializer::new();
         let matfile = e.serialize(serializer);
 
-        println!("{:#?}", matfile)
+        let _ = crate::save_matfile_v7("test.mat", matfile.unwrap(), false);
+
+        // println!("{:#?}", matfile)
     }
 }

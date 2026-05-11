@@ -72,6 +72,12 @@ where
     T::deserialize(deserializer)
 }
 
+// ============================================================================
+//
+// MatFileDeserializer
+//
+// ============================================================================
+
 pub struct MatFileDeserializer<'de> {
     matfile: &'de MatFile,
 }
@@ -151,6 +157,12 @@ impl<'a, 'de> MapAccess<'de> for MatFileMapAccess<'a, 'de> {
     }
 }
 
+// ============================================================================
+//
+// MatVariableDeserializer
+//
+// ============================================================================
+
 #[allow(dead_code)]
 struct MatVariableDeserializer<'de> {
     matvar: &'de MatVariable,
@@ -216,7 +228,7 @@ impl<'de> Deserializer<'de> for MatVariableDeserializer<'de> {
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
@@ -225,7 +237,39 @@ impl<'de> Deserializer<'de> for MatVariableDeserializer<'de> {
     {
         match self.matvar {
             MatVariable::Structure(_) => visitor.visit_map(MatVariableMapAccess::new(&self, fields, 0)),
-            _ => unimplemented!(),
+            #[cfg(feature = "ndarray")]
+            MatVariable::NumericArray(_) => {
+                if name == "Array" && fields == ["v", "dim", "data"] {
+                    // Assume that we want to deserialize into a ndarray type
+                    let dim = self.matvar.dim();
+                    let dim_conv = mat_dim_to_ndarray_dim(&dim)
+                        .into_iter()
+                        .map(|x| x as u64)
+                        .collect::<Vec<u64>>();
+                    
+                    let var = match self.matvar.numeric_type().unwrap() {
+                        crate::MatlabType::U8(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_u8().unwrap(), &dim)}),
+                        crate::MatlabType::I8(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_i8().unwrap(), &dim)}),
+                        crate::MatlabType::U16(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_u16().unwrap(), &dim)}),
+                        crate::MatlabType::I16(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_i16().unwrap(), &dim)}),
+                        crate::MatlabType::U32(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_u32().unwrap(), &dim)}),
+                        crate::MatlabType::I32(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_i32().unwrap(), &dim)}),
+                        crate::MatlabType::U64(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_u64().unwrap(), &dim)}),
+                        crate::MatlabType::I64(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_i64().unwrap(), &dim)}),
+                        crate::MatlabType::F32(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_f32().unwrap(), &dim)}),
+                        crate::MatlabType::F64(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_f64().unwrap(), &dim)}),
+                        crate::MatlabType::UTF8(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_char().unwrap(), &dim)}),
+                        crate::MatlabType::UTF16(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_char().unwrap(), &dim)}),
+                        crate::MatlabType::BOOL(_) => matvar!({ v: 1u8, dim: dim_conv, data: mat_col_to_ndarray_row(&self.matvar.to_vec_bool().unwrap(), &dim)}),
+                    };
+
+                    let de = MatVariableDeserializerOwned { matvar: var };
+                    visitor.visit_map(MatVariableMapAccessOwned::new(de, fields, 0))
+                } else {
+                    Err(MatrwError::SerdeError("Unknown deserialization".to_string()))
+                }
+            },
+            _ => unimplemented!("Want to de {name} with fields {fields:?} {:#?}", self.matvar),
         }
     }
 
@@ -506,10 +550,144 @@ impl<'a, 'de> MapAccess<'de> for MatVariableMapAccess<'a, 'de> {
         match matvar {
             MatVariable::NumericArray(_) => seed.deserialize(MatVariableDeserializer { matvar }),
             MatVariable::Structure(_) => seed.deserialize(MatVariableDeserializer { matvar }),
-            _ => unimplemented!(),
+            _ => unimplemented!("Got key {} {:#?}", key, matvar),
         }
     }
 }
+
+// ============================================================================
+//
+// MatVariableDeserializerOwned
+//
+// ============================================================================
+
+struct MatVariableDeserializerOwned {
+    matvar: MatVariable,
+}
+
+#[allow(unused)]
+impl<'de> Deserializer<'de> for MatVariableDeserializerOwned {
+    type Error = MatrwError;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de> {
+        match self.matvar {
+            MatVariable::NumericArray(_) => {
+                let vec: Option<u8> = self.matvar.to_u8();
+
+                if let Some(value) = vec {
+                    visitor.visit_u8(value)
+                } else {
+                    Err(MatrwError::SerdeError("Expected u8".to_string()))
+                }
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de> {
+        match self.matvar {
+            MatVariable::NumericArray(_) => {
+                let vec_u8: Option<Vec<u8>> = self.matvar.to_vec_u8();
+                let vec_i8: Option<Vec<i8>> = self.matvar.to_vec_i8();
+                let vec_u16: Option<Vec<u16>> = self.matvar.to_vec_u16();
+                let vec_i16: Option<Vec<i16>> = self.matvar.to_vec_i16();
+                let vec_u32: Option<Vec<u32>> = self.matvar.to_vec_u32();
+                let vec_i32: Option<Vec<i32>> = self.matvar.to_vec_i32();
+                let vec_u64: Option<Vec<u64>> = self.matvar.to_vec_u64();
+                let vec_i64: Option<Vec<i64>> = self.matvar.to_vec_i64();
+                let vec_f32: Option<Vec<f32>> = self.matvar.to_vec_f32();
+                let vec_f64: Option<Vec<f64>> = self.matvar.to_vec_f64();
+                let vec_char: Option<Vec<char>> = self.matvar.to_vec_char();
+
+                if let Some(value) = vec_u8 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_i8 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_u16 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_i16 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_u32 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_i32 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_u64 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_i64 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_f32 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_f64 {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else if let Some(value) = vec_char {
+                    visitor.visit_seq(SeqDeserializer::new(value.into_iter()).into_deserializer())
+                } else {
+                    Err(MatrwError::SerdeError("Unknown numeric type".to_string()))
+                }
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    forward_to_deserialize_any! {bool i8 i16 i32 i64 u16 u32 u64 f32 f64 char str string bytes byte_buf option unit struct unit_struct newtype_struct tuple tuple_struct map enum identifier ignored_any}
+
+}
+
+struct MatVariableMapAccessOwned {
+    de: MatVariableDeserializerOwned,
+    fields: &'static [&'static str],
+    id: usize,
+}
+
+#[allow(dead_code)]
+impl MatVariableMapAccessOwned {
+    fn new(de: MatVariableDeserializerOwned, fields: &'static [&'static str], id: usize) -> Self {
+        MatVariableMapAccessOwned { de, fields, id }
+    }
+}
+
+#[allow(dead_code)]
+impl<'de> MapAccess<'de> for MatVariableMapAccessOwned {
+    type Error = MatrwError;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
+    where
+        K: serde::de::DeserializeSeed<'de>,
+    {
+        if self.id < self.fields.len() {
+            let key = self.fields[self.id];
+            self.id += 1;
+            seed.deserialize(key.into_deserializer()).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::DeserializeSeed<'de>,
+    {
+        let key = self.fields[self.id - 1];
+        let matvar = self.de.matvar[key].clone();
+
+        match matvar {
+            MatVariable::NumericArray(_) => seed.deserialize(MatVariableDeserializerOwned { matvar }),
+            _ => unimplemented!("Got key {} {:#?}", key, matvar),
+        }
+    }
+}
+
+// ============================================================================
 
 #[cfg(test)]
 mod tests {

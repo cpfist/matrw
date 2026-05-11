@@ -45,3 +45,116 @@ fn single_var_string() {
 
     println!("The data {:#?}", v);
 }
+
+#[cfg(feature = "ndarray")]
+mod ndarray_tests {
+    use ndarray::{ArrayD, array};
+    use serde::Serialize;
+    use super::*;
+
+    /// Deserialize a multi-dimensional MATLAB array into a ndarray::ArrayD
+    #[test]
+    fn deserialize_ndarray() {
+        let arr = array![
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 7, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 99, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+        ];
+        // println!("{arr}");
+        
+        #[derive(Debug, Deserialize, Serialize)]
+        struct StructWithNDArray {
+            arr: ArrayD<i32>,
+        }
+
+        let mat = matfile!(
+            arr: matvar!([
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 7, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 99, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+            ]),
+        );
+
+        let s: StructWithNDArray = from_matfile(&mat).unwrap();
+        // println!("{}", s.var);
+
+        assert_eq!(arr.into_dyn(), s.arr)
+    }
+
+    /// Serialize a ndarray::ArrayD into a multi-dimensional MATLAB array
+    #[test]
+    fn serialize_ndarray() {
+        let arr = array![
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 7, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+                [
+                    [
+                        [0, 1, 2], 
+                        [3, 4, 5]
+                    ],
+                    [
+                        [6, 99, 8],
+                        [9, 10, 11]
+                    ]
+                ],
+        ].into_dyn();
+        // println!("{arr}");
+
+        #[derive(Debug, Serialize)]
+        struct StructWithNDArray {
+            arr: ArrayD<i32>,
+        }
+
+        let s = StructWithNDArray { arr };
+
+        let m = to_matfile(s).unwrap();
+        println!("{:#?}", m);
+
+        let _ = save_matfile_v7("test.mat", m, true);
+
+        // assert_eq!(arr.into_dyn(), s.arr)
+    }
+
+}

@@ -25,7 +25,9 @@ default = []
 serde = ["dep:serde"]
 ndarray = [
       "dep:ndarray", 
+      "ndarray/serde",
       "dep:num-complex", 
+      "num-complex/serde"
       ]
 
 [dev-dependencies]
