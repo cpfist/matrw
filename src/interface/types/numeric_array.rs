@@ -13,8 +13,8 @@ use crate::interface::types::array::{
 use crate::interface::types::matlab_types::{MatlabType, MatlabTypeMarker};
 use crate::interface::types::sparse_array::SparseArray;
 use crate::interface::variable::MatVariable;
+use crate::parser::v4::types::numeric_array::NumericArray4;
 use crate::parser::v7::types::numeric_array::NumericArray7;
-use crate::parser::v7::types::subelements::array_numeric_data::array_data_value::ArrayDataValueVar;
 
 /// Contains vectors, matrices or multidimensional arrays of complex numeric data.
 ///
@@ -314,7 +314,7 @@ impl NumericArray {
 
 impl From<NumericArray7> for NumericArray {
     fn from(value: NumericArray7) -> Self {
-        use ArrayDataValueVar::*;
+        use crate::parser::v7::types::subelements::array_numeric_data::array_data_value::ArrayDataValueVar::*;
 
         let (_name, dim, val, val_cmp) = value.value();
 
@@ -348,6 +348,37 @@ impl From<NumericArray7> for NumericArray {
             Some(ArrayValueUTF8(v)) => Some(MatlabType::UTF8(v)),
             Some(ArrayValueUTF16(v)) => Some(MatlabType::UTF16(v)),
             Some(ArrayValueBOOL(v)) => Some(MatlabType::BOOL(v)),
+            _ => None,
+        };
+
+        Self::new(dim, value, value_cmp).expect("Could not create NumericArray.")
+    }
+}
+
+impl From<NumericArray4> for NumericArray {
+    fn from(value: NumericArray4) -> Self {
+        use crate::parser::v4::types::subelements::array_numeric_data::array_data_value::ArrayDataValueVar::*;
+
+        let (_name, dim, val, val_cmp) = value.value();
+
+        let value = match val {
+            ArrayValueU8(v) => MatlabType::U8(v),
+            ArrayValueU16(v) => MatlabType::U16(v),
+            ArrayValueI16(v) => MatlabType::I16(v),
+            ArrayValueI32(v) => MatlabType::I32(v),
+            ArrayValueF32(v) => MatlabType::F32(v),
+            ArrayValueF64(v) => MatlabType::F64(v),
+            ArrayValueUTF8(v) => MatlabType::UTF8(v),
+        };
+
+        let value_cmp = match val_cmp {
+            Some(ArrayValueU8(v)) => Some(MatlabType::U8(v)),
+            Some(ArrayValueU16(v)) => Some(MatlabType::U16(v)),
+            Some(ArrayValueI16(v)) => Some(MatlabType::I16(v)),
+            Some(ArrayValueI32(v)) => Some(MatlabType::I32(v)),
+            Some(ArrayValueF32(v)) => Some(MatlabType::F32(v)),
+            Some(ArrayValueF64(v)) => Some(MatlabType::F64(v)),
+            Some(ArrayValueUTF8(v)) => Some(MatlabType::UTF8(v)),
             _ => None,
         };
 

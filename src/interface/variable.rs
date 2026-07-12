@@ -14,6 +14,7 @@ use crate::interface::types::numeric_array::NumericArray;
 use crate::interface::types::sparse_array::SparseArray;
 use crate::interface::types::structure::Structure;
 use crate::interface::types::structure_array::StructureArray;
+use crate::parser::v4::variable4::MatVariable4;
 use crate::parser::v7::types::compressed_array::CompressedArray7;
 use crate::parser::v7::variable7::MatVariable7;
 
@@ -864,6 +865,12 @@ impl From<CompressedArray7> for MatVariable {
                     .expect("Could not create NumericArray."),
             ),
         }
+    }
+}
+
+impl From<MatVariable4> for MatVariable {
+    fn from(value: MatVariable4) -> Self {
+        MatVariable::NumericArray(NumericArray::from(value.0))
     }
 }
 

@@ -316,7 +316,7 @@ pub mod __private {
 #[doc(inline)]
 pub use interface::{
     error::MatrwError,
-    fileio::{load_matfile, load_matfile_from_u8, save_matfile_v7},
+    fileio::{load_matfile, load_matfile_from_u8, save_matfile_v4, save_matfile_v7},
     matfile::MatFile,
     types::matlab_types::MatlabType,
     variable::MatVariable,

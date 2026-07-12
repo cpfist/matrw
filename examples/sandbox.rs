@@ -23,7 +23,8 @@ fn main() {
     // example15();
     // example16();
     // example17();
-    example18();
+    // example18();
+    example19();
 }
 
 fn example1() {
@@ -499,4 +500,13 @@ fn example18() {
     let m = matfile!(
         a: a
     );
+}
+fn example19() {
+    let matfile = matfile! {
+        // a: matvar!('c'),
+        abc: matvar!(9),
+    };
+
+    // Write MAT-file
+    save_matfile_v4("test.mat", matfile).expect("Could not write MAT-file");
 }

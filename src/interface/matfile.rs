@@ -5,6 +5,7 @@ use indexmap::map::{Iter, IterMut};
 
 use crate::interface::helper::is_valid_variable_name;
 use crate::interface::variable::MatVariable;
+use crate::parser::v4::matfile4::MatFile4;
 use crate::parser::v7::matfile7::MatFile7;
 
 ///
@@ -106,6 +107,20 @@ impl Index<&str> for MatFile {
 
 impl From<MatFile7> for MatFile {
     fn from(value: MatFile7) -> Self {
+        let mut matfile = MatFile {
+            data: IndexMap::new(),
+        };
+
+        for (key, value) in value.data.into_iter() {
+            matfile.data.insert(key.clone(), MatVariable::from(value));
+        }
+
+        matfile
+    }
+}
+
+impl From<MatFile4> for MatFile {
+    fn from(value: MatFile4) -> Self {
         let mut matfile = MatFile {
             data: IndexMap::new(),
         };

@@ -5,6 +5,8 @@ use binrw::io::Cursor;
 use binrw::io::TakeSeekExt;
 use std::fs::File;
 use std::io::BufWriter;
+use std::io::Seek;
+use std::io::SeekFrom;
 use std::io::Write;
 
 use crate::interface::error::MatrwError;
@@ -12,6 +14,8 @@ use crate::interface::matfile::MatFile;
 use crate::interface::variable::MatVariable;
 use crate::parser::header;
 use crate::parser::header::{MatFileHeader, MatFileVerFlag};
+use crate::parser::v4::types::header::MatVariableHeader4;
+use crate::parser::v4::matfile4::MatFile4;
 use crate::parser::v7::matfile7::MatFile7;
 
 use super::types::compressed_array::CompressedArray;
@@ -40,28 +44,42 @@ pub fn load_matfile(path: &str) -> Result<MatFile, MatrwError> {
     let mut reader = BufReader::new(f);
 
     // Read the header to find out the file version and the endian
-    let matheader = match reader.read_le::<MatFileHeader>() {
-        Ok(header) => header,
-        Err(err) => return Err(MatrwError::BinrwError(err)),
-    };
+    let matheader = reader.read_le::<MatFileHeader>();
 
-    let endian = matheader.matfile_endian;
-    let subsystem_offset = matheader.header_subsystem_data_offset_field;
-    // Get the size to read out. In case the MAT-file contains objects, we want to ignore the
-    // subsystem for now.
-    let limit = if subsystem_offset != 0 {
-        subsystem_offset
-    } else {
-        f_bytes
-    } - header::HEADER_SIZE as u64;
+    match matheader {
+        Ok(header) => {
+            // The structure in `MatFileHeader` applies to v7 and v7.3.
 
-    match matheader.matfile_ver {
-        MatFileVerFlag::V7 => Ok(reader.take_seek(limit).read_type::<MatFile7>(endian)?.into()),
-        MatFileVerFlag::V73 => Err(MatrwError::MatFile73Error),
+            let endian = header.matfile_endian;
+            let subsystem_offset = header.header_subsystem_data_offset_field;
+            // Get the size to read out. In case the MAT-file contains objects, we want to ignore the
+            // subsystem for now.
+            let limit = if subsystem_offset != 0 {
+                subsystem_offset
+            } else {
+                f_bytes
+            } - header::HEADER_SIZE as u64;
+
+            match header.matfile_ver {
+                MatFileVerFlag::V7 => Ok(reader.take_seek(limit).read_type::<MatFile7>(endian)?.into()),
+                MatFileVerFlag::V73 => Err(MatrwError::MatFile73Error),
+            }
+        }
+        Err(err) => {
+            // If header could not be read, it still could be a v4 MatFile
+
+            // Test if the first 20 bytes are a valid v4 variable header.
+            if reader.read_le::<MatVariableHeader4>().is_err() {
+                return Err(MatrwError::BinrwError(err));
+            }
+            reader.seek(SeekFrom::Start(0))?;
+
+            Ok(reader.read_le::<MatFile4>()?.into())
+        }
     }
 }
 
-/// Write MAT-file
+/// Write v7 MAT-file
 ///
 /// Example
 /// ```
@@ -93,6 +111,37 @@ pub fn save_matfile_v7(path: &str, matfile: MatFile, compress: bool) -> Result<(
 
     let _ = matheader.write_options(&mut writer, matheader.matfile_endian, ());
     let _ = MatFile7::from(matfile).write_options(&mut writer, matheader.matfile_endian, ());
+    let _ = writer.flush();
+
+    Ok(())
+}
+
+/// Write v4 MAT-file
+///
+/// Example
+/// ```
+/// use matrw::{MatFile, matvar, save_matfile_v4};
+///
+/// // Create a new MatFile
+/// let mut matfile = MatFile::new();
+///
+/// // Write MAT-file
+/// save_matfile_v4("test.mat", matfile)
+///         .expect("Could not write MAT-file");
+///
+/// # let _ = std::fs::remove_file("test.mat");
+/// ```
+pub fn save_matfile_v4(path: &str, matfile: MatFile) -> Result<(), MatrwError> {
+    let f = File::create(path)?;
+    let mut writer = BufWriter::new(f);
+
+    let endian = if cfg!(target_endian = "big") {
+        binrw::Endian::Big
+    } else {
+        binrw::Endian::Little
+    };
+
+    let _ = MatFile4::from(matfile).write_options(&mut writer, endian, ());
     let _ = writer.flush();
 
     Ok(())
